@@ -1,0 +1,9 @@
+pandas==2.1.4
+psycopg2-binary==2.9.9
+yfinance==0.2.33
+azure-storage-blob==12.19.0
+python-dotenv==1.0.0
+pyarrow==14.0.2
+fastparquet==2024.2.0
+sqlalchemy==2.0.25
+numpy==1.26.3
