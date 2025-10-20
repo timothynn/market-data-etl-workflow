@@ -1,28 +1,40 @@
-# Market Data ETL Pipeline
+# n8n Workflow Starter
 
-A production-ready ETL pipeline for ingesting and transforming market data from open financial datasets into analytics-ready PostgreSQL tables.
+A production-ready n8n (open source) workflow automation project with Docker, PostgreSQL, and pre-built workflow templates.
 
-## Features
+![n8n](https://img.shields.io/badge/n8n-workflow%20automation-FF6D5A?style=for-the-badge&logo=n8n)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
 
-- **Extract**: Fetch market data from Yahoo Finance API
-- **Transform**: Calculate technical indicators (moving averages, volatility, daily returns)
-- **Load**: Optimized batch loading to PostgreSQL with conflict resolution
-- **Performance**: 30% reduction in data load time through batch inserts and indexing
-- **Azure Integration**: Optional backup to Azure Blob Storage
-- **Analytics Views**: Pre-built views for daily summaries and performance metrics
+## 📋 Table of Contents
 
-## Tech Stack
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Project Structure](#project-structure)
+- [Workflow Examples](#workflow-examples)
+- [Configuration](#configuration)
+- [Production Deployment](#production-deployment)
+- [Backup & Restore](#backup--restore)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
 
-- **Python 3.11**: Core ETL logic
-- **PostgreSQL 15**: Data warehouse
-- **Pandas**: Data transformation
-- **Docker & Docker Compose**: Container orchestration
-- **Azure Blob Storage**: Cloud backup (optional)
-- **yfinance**: Market data source
+## ✨ Features
 
-## Prerequisites on NixOS
+- 🐳 **Docker Compose setup** - One-command deployment
+- 🗄️ **PostgreSQL database** - Production-ready persistence
+- 🔐 **Basic authentication** - Secure by default
+- 📊 **Health checks** - Container monitoring
+- 🔄 **Auto-restart** - High availability
+- 📝 **Execution logging** - Full audit trail
+- 🎯 **Example workflows** - Ready-to-use templates
+- 🛡️ **Security best practices** - Credentials management
+- 📦 **Volume persistence** - Data safety
+- 🌍 **Timezone support** - Configurable locale
 
-Install Docker on NixOS:
+## 🔧 Prerequisites
+
+### For NixOS:
 
 ```nix
 # Add to /etc/nixos/configuration.nix
@@ -30,171 +42,319 @@ virtualisation.docker.enable = true;
 users.users.YOUR_USERNAME.extraGroups = [ "docker" ];
 ```
 
-Rebuild and restart:
+Then rebuild:
 ```bash
 sudo nixos-rebuild switch
-sudo systemctl restart docker
+sudo systemctl start docker
 ```
 
-## Project Structure
+### For other systems:
+- Docker Engine 20.10+
+- Docker Compose 2.0+
+- 2GB RAM minimum
+- 10GB disk space
 
-```
-market-data-etl/
-├── Dockerfile
-├── docker-compose.yml
-├── requirements.txt
-├── etl_pipeline.py
-├── sql/
-│   └── init.sql
-├── .env.example
-└── README.md
-```
+## 🚀 Quick Start
 
-## Quick Start
+### 1. Clone the repository
 
-1. **Clone or create the project structure**:
 ```bash
-mkdir -p market-data-etl/sql
-cd market-data-etl
+git clone https://github.com/YOUR_USERNAME/n8n-workflow-starter.git
+cd n8n-workflow-starter
 ```
 
-2. **Create all files** (use the artifacts provided)
+### 2. Configure environment
 
-3. **Configure environment**:
 ```bash
 cp .env.example .env
-# Edit .env with your Azure credentials (optional)
+nano .env  # Edit credentials
 ```
 
-4. **Build and run**:
+**Important**: Change the default password in `.env`:
 ```bash
-docker compose up --build
+N8N_BASIC_AUTH_USER=admin
+N8N_BASIC_AUTH_PASSWORD=your_secure_password_here
 ```
 
-5. **Access PgAdmin** (optional):
-- URL: http://localhost:5050
-- Email: admin@example.com
-- Password: admin
+### 3. Start n8n
 
-## Database Configuration
-
-The pipeline creates:
-
-### Main Table: `market_data`
-- OHLCV data (Open, High, Low, Close, Volume)
-- Technical indicators (MA5, MA10, volatility, returns)
-- Optimized indexes on symbol, date, and composite keys
-
-### Analytics Views:
-- **daily_summary**: Recent trading activity with trend indicators
-- **top_performers**: Aggregated performance metrics by symbol
-
-## Performance Optimizations
-
-1. **Batch Inserts**: Uses `execute_batch` with 1000 records per batch
-2. **Indexes**: Strategic indexes on symbol, date, and composite keys
-3. **Staging Table**: Temporary staging for data validation
-4. **Conflict Resolution**: UPSERT pattern for idempotent loads
-5. **Connection Pooling**: Efficient database connection management
-
-## Usage Examples
-
-### Run ETL Pipeline
 ```bash
-docker compose up etl_pipeline
+docker compose up -d
 ```
 
-### Run One-Time ETL
+### 4. Access n8n
+
+Open your browser to: **http://localhost:5678**
+
+Default credentials (change these!):
+- Username: `admin`
+- Password: `changeme123`
+
+## 📁 Project Structure
+
+```
+n8n-workflow-starter/
+├── .github/                    # GitHub workflows & templates
+│   └── workflows/
+│       └── docker-build.yml   # CI/CD pipeline
+├── workflows/                  # n8n workflow files
+│   ├── examples/              # Pre-built workflow templates
+│   │   ├── webhook-to-database.json
+│   │   ├── scheduled-data-sync.json
+│   │   ├── email-notification.json
+│   │   └── api-integration.json
+│   └── custom/                # Your custom workflows
+├── credentials/               # Encrypted credentials storage
+│   ├── .gitignore
+│   └── README.md
+├── scripts/                   # Utility scripts
+│   ├── backup.sh             # Backup workflows & DB
+│   ├── restore.sh            # Restore from backup
+│   └── export-workflows.sh   # Export workflows as JSON
+├── config/                    # Configuration files
+│   ├── .env.example          # Environment template
+│   └── n8n-config.json       # n8n settings
+├── docs/                      # Documentation
+│   ├── getting-started.md
+│   ├── workflow-examples.md
+│   ├── deployment.md
+│   └── troubleshooting.md
+├── logs/                      # Application logs
+├── docker-compose.yml         # Docker orchestration
+├── .gitignore
+├── README.md
+├── LICENSE
+└── CONTRIBUTING.md
+```
+
+## 🎯 Workflow Examples
+
+### 1. Webhook to Database
+Receives webhook data and stores it in PostgreSQL.
+
+**Use case**: Form submissions, API callbacks, event tracking
+
+### 2. Scheduled Data Sync
+Runs on a schedule to sync data between systems.
+
+**Use case**: Daily reports, data backups, API polling
+
+### 3. Email Notifications
+Monitors conditions and sends email alerts.
+
+**Use case**: Error alerts, status updates, reports
+
+### 4. API Integration
+Connects multiple APIs to automate workflows.
+
+**Use case**: CRM updates, Slack notifications, data enrichment
+
+## ⚙️ Configuration
+
+### Environment Variables
+
+Edit `.env` to customize:
+
 ```bash
-docker compose run --rm etl_pipeline python etl_pipeline.py
+# Authentication
+N8N_BASIC_AUTH_USER=admin
+N8N_BASIC_AUTH_PASSWORD=strong_password
+
+# Host settings
+N8N_HOST=localhost
+N8N_PORT=5678
+WEBHOOK_URL=http://localhost:5678/
+
+# Database
+POSTGRES_USER=n8n
+POSTGRES_PASSWORD=secure_db_password
+POSTGRES_DB=n8n
+
+# Timezone
+TIMEZONE=Africa/Nairobi
 ```
 
-### Access PostgreSQL
+### Advanced Configuration
+
+For production deployments, see [docs/deployment.md](docs/deployment.md)
+
+## 🌐 Production Deployment
+
+### 1. Enable HTTPS
+
+Update `.env`:
 ```bash
-docker compose exec postgres psql -U etl_user -d market_data
+N8N_PROTOCOL=https
+N8N_HOST=workflows.yourdomain.com
+WEBHOOK_URL=https://workflows.yourdomain.com/
 ```
 
-### Query Examples
-```sql
--- View recent data
-SELECT * FROM daily_summary LIMIT 10;
+### 2. Add SSL certificates
 
--- Top performers
-SELECT * FROM top_performers;
-
--- Volume analysis
-SELECT symbol, AVG(volume) as avg_volume
-FROM market_data
-WHERE date >= CURRENT_DATE - INTERVAL '7 days'
-GROUP BY symbol
-ORDER BY avg_volume DESC;
-```
-
-## Extending the Pipeline
-
-### Add More Data Sources
-```python
-def extract_from_alpha_vantage(self, symbol):
-    # Add Alpha Vantage integration
-    pass
-```
-
-### Add Custom Transformations
-```python
-def transform_data(self, df):
-    # Add RSI, MACD, Bollinger Bands
-    df['rsi'] = self.calculate_rsi(df['close'])
-    return df
-```
-
-### Schedule with Cron
 ```bash
-# Add to crontab
-0 */6 * * * cd /path/to/project && docker compose run --rm etl_pipeline
+# Using Let's Encrypt
+docker run -it --rm \
+  -v /etc/letsencrypt:/etc/letsencrypt \
+  certbot/certbot certonly --standalone \
+  -d workflows.yourdomain.com
 ```
 
-## Monitoring
+### 3. Use strong passwords
 
-### View Logs
 ```bash
-docker compose logs -f etl_pipeline
+# Generate secure password
+openssl rand -base64 32
 ```
 
-### Check Audit Log
-```sql
-SELECT * FROM etl_audit_log ORDER BY start_time DESC LIMIT 10;
-```
+### 4. Enable Redis queue (optional)
 
-### Data Quality Checks
-```sql
-SELECT * FROM data_quality_checks WHERE check_status = 'FAILED';
-```
-
-## Troubleshooting
-
-### Connection Issues
+Uncomment Redis service in `docker-compose.yml` and add to `.env`:
 ```bash
-# Check if PostgreSQL is ready
-docker compose exec postgres pg_isready -U etl_user
-
-# Verify network
-docker network inspect market-data-etl_etl_network
+EXECUTIONS_MODE=queue
+QUEUE_BULL_REDIS_HOST=redis
 ```
 
-### Reset Database
+## 💾 Backup & Restore
+
+### Create Backup
+
 ```bash
+./scripts/backup.sh
+```
+
+Creates timestamped backup in `backups/` directory.
+
+### Restore from Backup
+
+```bash
+./scripts/restore.sh backups/n8n-backup-2025-10-20.tar.gz
+```
+
+### Export Workflows
+
+```bash
+./scripts/export-workflows.sh
+```
+
+Exports all workflows to `workflows/export/` as JSON files.
+
+## 🔍 Monitoring
+
+### View logs
+
+```bash
+# All services
+docker compose logs -f
+
+# n8n only
+docker compose logs -f n8n
+
+# Last 100 lines
+docker compose logs --tail=100 n8n
+```
+
+### Check health
+
+```bash
+docker compose ps
+```
+
+### Database access
+
+```bash
+docker compose exec postgres psql -U n8n -d n8n
+```
+
+## 🐛 Troubleshooting
+
+### n8n won't start
+
+```bash
+# Check logs
+docker compose logs n8n
+
+# Restart services
+docker compose restart
+
+# Full rebuild
 docker compose down -v
-docker compose up -d postgres
+docker compose up -d --build
 ```
 
-## Production Considerations
+### Database connection errors
 
-1. **Secrets Management**: Use Docker secrets or env vault
-2. **Monitoring**: Add Prometheus/Grafana for metrics
-3. **Alerting**: Configure alerts for pipeline failures
-4. **Scaling**: Use Kubernetes for horizontal scaling
-5. **Backup**: Implement automated PostgreSQL backups
+```bash
+# Verify PostgreSQL is running
+docker compose ps postgres
 
-## License
+# Check database logs
+docker compose logs postgres
 
-MIT
+# Reset database
+docker compose down -v
+docker volume rm n8n-workflow-starter_postgres_data
+docker compose up -d
+```
+
+### Port already in use
+
+```bash
+# Find process using port 5678
+sudo lsof -i :5678
+
+# Kill process
+sudo kill -9 <PID>
+
+# Or change port in .env
+N8N_PORT=5679
+```
+
+### Reset credentials
+
+```bash
+# Stop n8n
+docker compose down
+
+# Remove credential files
+rm -rf credentials/*.json
+
+# Restart
+docker compose up -d
+```
+
+## 📚 Documentation
+
+- [n8n Official Docs](https://docs.n8n.io/)
+- [Workflow Examples](docs/workflow-examples.md)
+- [Deployment Guide](docs/deployment.md)
+- [API Reference](https://docs.n8n.io/api/)
+
+## 🤝 Contributing
+
+Contributions welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-workflow`)
+3. Commit your changes (`git commit -m 'Add amazing workflow'`)
+4. Push to the branch (`git push origin feature/amazing-workflow`)
+5. Open a Pull Request
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- [n8n.io](https://n8n.io/) - Amazing workflow automation tool
+- [Docker](https://www.docker.com/) - Container platform
+- Community contributors
+
+## 📧 Support
+
+- **Issues**: [GitHub Issues](https://github.com/YOUR_USERNAME/n8n-workflow-starter/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/YOUR_USERNAME/n8n-workflow-starter/discussions)
+- **n8n Community**: [community.n8n.io](https://community.n8n.io/)
+
+---
+
+Made with ❤️ for workflow automation enthusiasts

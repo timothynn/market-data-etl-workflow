@@ -1,0 +1,144 @@
+{
+  "name": "Scheduled Data Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "schedule-node",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.example.com/data",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "http-node",
+      "name": "Fetch API Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [450, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "2",
+          "name": "API Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Transform API response\nconst items = $input.all();\nconst transformed = [];\n\nfor (const item of items) {\n  const data = item.json;\n  \n  transformed.push({\n    id: data.id,\n    name: data.name,\n    value: parseFloat(data.value),\n    status: data.status || 'active',\n    synced_at: new Date().toISOString(),\n    source: 'api'\n  });\n}\n\nreturn transformed.map(item => ({ json: item }));"
+      },
+      "id": "transform-node",
+      "name": "Transform Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO sync_data (id, name, value, status, synced_at, source)\nVALUES ($1, $2, $3, $4, $5, $6)\nON CONFLICT (id) DO UPDATE SET\n  name = EXCLUDED.name,\n  value = EXCLUDED.value,\n  status = EXCLUDED.status,\n  synced_at = EXCLUDED.synced_at",
+        "options": {}
+      },
+      "id": "postgres-node",
+      "name": "Upsert to Database",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [850, 300],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "PostgreSQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log sync results\nconst items = $input.all();\nconst count = items.length;\n\nconsole.log(`Synced ${count} records at ${new Date().toISOString()}`);\n\nreturn [{ json: { \n  success: true, \n  records_synced: count,\n  timestamp: new Date().toISOString()\n}}];"
+      },
+      "id": "log-node",
+      "name": "Log Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 300]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch API Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch API Data": {
+      "main": [
+        [
+          {
+            "node": "Transform Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform Data": {
+      "main": [
+        [
+          {
+            "node": "Upsert to Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert to Database": {
+      "main": [
+        [
+          {
+            "node": "Log Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "scheduled",
+      "id": "scheduled"
+    },
+    {
+      "name": "sync",
+      "id": "sync"
+    }
+  ],
+  "pinData": {},
+  "versionId": "1"
+}

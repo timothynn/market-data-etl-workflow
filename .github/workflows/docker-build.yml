@@ -1,0 +1,79 @@
+name: Docker Build and Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Create .env file
+      run: |
+        cp .env.example .env
+        sed -i 's/changeme123/test_password_123/g' .env
+
+    - name: Build Docker containers
+      run: |
+        docker compose build
+
+    - name: Start services
+      run: |
+        docker compose up -d
+
+    - name: Wait for n8n to be ready
+      run: |
+        timeout 60 bash -c 'until docker compose exec -T n8n wget --spider http://localhost:5678/healthz 2>/dev/null; do sleep 2; done'
+
+    - name: Check service health
+      run: |
+        docker compose ps
+        docker compose logs n8n
+
+    - name: Test n8n API
+      run: |
+        curl -f http://localhost:5678/healthz || exit 1
+
+    - name: Run database tests
+      run: |
+        docker compose exec -T postgres psql -U n8n -d n8n -c "SELECT version();"
+
+    - name: Stop services
+      if: always()
+      run: |
+        docker compose down -v
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Validate docker-compose.yml
+      run: |
+        docker compose config
+
+    - name: Check for secrets in code
+      run: |
+        if grep -r "password.*=" --include="*.yml" --include="*.yaml" --exclude=".env.example" .; then
+          echo "Found potential hardcoded passwords!"
+          exit 1
+        fi
+
+    - name: Validate JSON workflows
+      run: |
+        for file in workflows/examples/*.json; do
+          if [ -f "$file" ]; then
+            jq empty "$file" || exit 1
+          fi
+        done
